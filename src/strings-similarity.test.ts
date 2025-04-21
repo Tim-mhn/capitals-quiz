@@ -1,4 +1,6 @@
+// @ts-ignore
 import { describe, it } from "node:test";
+// @ts-ignore
 import assert from "node:assert/strict";
 
 import { stringsAreSimilar } from "./strings-similarty.ts";
