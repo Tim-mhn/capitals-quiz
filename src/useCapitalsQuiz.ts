@@ -1,9 +1,11 @@
-import { computed, onMounted, ref, type Ref } from "vue";
+import { computed, onMounted, ref, watch, type Ref } from "vue";
 import {
   buildCapitalsQuiz,
   getShuffledArr,
   type CapitalsQuiz,
 } from "./build-quiz";
+import { stringsAreSimilar } from "./strings-similarty";
+import { pointsStore, type QuizMode } from "./points-storage";
 
 export function useCapitalsQuiz(
   getAllCapitals: () => Promise<Array<{ country: string; capital: string }>>
@@ -30,10 +32,6 @@ export function useCapitalsQuiz(
       console.warn(`No question at index ${currentQuestionIndex.value}`);
       return;
     }
-
-    // if (capitalOption === currentQuestion.value.correctAnswer) {
-    //   points.value++;
-    // }
 
     answer.value = capitalOption;
     answered.value = true;
@@ -68,49 +66,105 @@ export function useCapitalsQuiz(
     addBadAnswerStyle,
   };
 }
-type Continent = "Europe" | "Asia" | "America" | "Oceania";
 
-export function useTextCapitalsQuiz(continent?: Continent) {
+export const CONTINENTS = [
+  "Europe",
+  "Asia",
+  "America",
+  "Oceania",
+  "Africa",
+] as const;
+export type Continent = (typeof CONTINENTS)[number];
+
+export function useTextCapitalsQuiz(continent?: Continent, questions?: number) {
+  const MAX_QUESTIONS = 10; // questions;
+
+  const mode: QuizMode = continent
+    ? {
+        continent,
+      }
+    : {
+        mode: "all",
+        questions: questions || "all",
+      };
+
+  console.log({ MAX_QUESTIONS });
   const quiz: Ref<Array<{ capital: string; country: string }>> = ref([]);
   const points = ref(0);
   const currentQuestionIndex = ref(0);
   const currentCountry = computed(
-    () => quiz.value[currentQuestionIndex.value]?.country
+    () => quiz.value[currentQuestionIndex.value]?.country || "??"
   );
+
+  const isEndOfQuiz = computed(
+    () =>
+      currentQuestionIndex.value === quiz.value.length &&
+      currentQuestionIndex.value > 0
+  );
+
+  const answerStatus = ref<"pending" | "error" | "close" | "exact">("pending");
 
   const answer = computed(
     () => quiz.value[currentQuestionIndex.value]?.capital
   );
-  const showAnswer = ref(false);
+  const showAnswer = computed(() => answerStatus.value !== "pending");
 
+  const bestScore = pointsStore.getBestPoints(mode);
+
+  const maxPossibleScore = ref(0);
   onMounted(async () => {
     const countries = (await import("./countries")).default;
 
     const shuffledCountries = getShuffledArr(countries);
 
-    if (continent) {
-      quiz.value = shuffledCountries.filter((c) => c.continent === continent);
-    } else {
-      quiz.value = shuffledCountries;
-    }
+    const allPossibleQuestions = continent
+      ? shuffledCountries.filter((c) => c.continent === continent)
+      : shuffledCountries;
+
+    const questionsCount = MAX_QUESTIONS
+      ? Math.min(MAX_QUESTIONS, allPossibleQuestions.length)
+      : allPossibleQuestions.length;
+
+    quiz.value = allPossibleQuestions.slice(0, questionsCount);
+
+    console.log(quiz.value);
   });
 
-  const stringsMatch = (str1: string, str2: string) =>
-    str1.toLowerCase().trim() === str2.toLowerCase().trim();
-
   function giveAnswer(answer: string) {
+    console.log(currentQuestionIndex.value);
     const capital = quiz.value[currentQuestionIndex.value].capital;
-    if (stringsMatch(answer, capital)) {
+
+    console.log(capital);
+    const comparison = stringsAreSimilar(answer, capital);
+    if (comparison.isExact) {
       points.value += 1;
+      answerStatus.value = "exact";
+    } else if (comparison.isSimilar) {
+      points.value += 0.5;
+      answerStatus.value = "close";
+    } else {
+      answerStatus.value = "error";
     }
 
-    showAnswer.value = true;
+    maxPossibleScore.value += 1;
 
     setTimeout(() => {
       currentQuestionIndex.value += 1;
-      showAnswer.value = false;
-    }, 500);
+      answerStatus.value = "pending";
+    }, 2000);
   }
+
+  watch(isEndOfQuiz, () => {
+    if (isEndOfQuiz.value) {
+      pointsStore.storeIfBest(points.value, mode);
+    }
+  });
+
+  const bestScoreText = computed(() => {
+    const newBestScore = Math.max(bestScore, points.value);
+
+    return `Best score: ${newBestScore}/${quiz.value.length}`;
+  });
 
   return {
     quiz,
@@ -119,5 +173,11 @@ export function useTextCapitalsQuiz(continent?: Continent) {
     currentCountry,
     showAnswer,
     answer,
+    answerStatus,
+    isEndOfQuiz,
+    bestScore,
+    bestScoreText,
+    currentQuestionIndex,
+    maxPossibleScore,
   };
 }
