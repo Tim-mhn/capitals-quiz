@@ -102,12 +102,12 @@ export function useTextCapitalsQuiz(continent?: Continent, questions?: number) {
       currentQuestionIndex.value > 0
   );
 
-  const answerStatus = ref<"pending" | "error" | "close" | "exact">("pending");
+  const answerStatus = ref<"Pending" | "Wrong" | "Close" | "Exact">("Pending");
 
   const answer = computed(
     () => quiz.value[currentQuestionIndex.value]?.capital
   );
-  const showAnswer = computed(() => answerStatus.value !== "pending");
+  const showAnswer = computed(() => answerStatus.value !== "Pending");
 
   const bestScore = pointsStore.getBestPoints(mode);
 
@@ -138,19 +138,19 @@ export function useTextCapitalsQuiz(continent?: Continent, questions?: number) {
     const comparison = stringsAreSimilar(answer, capital);
     if (comparison.isExact) {
       points.value += 1;
-      answerStatus.value = "exact";
+      answerStatus.value = "Exact";
     } else if (comparison.isSimilar) {
       points.value += 0.5;
-      answerStatus.value = "close";
+      answerStatus.value = "Close";
     } else {
-      answerStatus.value = "error";
+      answerStatus.value = "Wrong";
     }
 
     maxPossibleScore.value += 1;
 
     setTimeout(() => {
       currentQuestionIndex.value += 1;
-      answerStatus.value = "pending";
+      answerStatus.value = "Pending";
     }, 2000);
   }
 

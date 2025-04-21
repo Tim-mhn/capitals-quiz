@@ -9,6 +9,18 @@ const route = useRoute();
 
 const continent = (route.query.continent as Continent) || "";
 
+const getQuestionsFromQueryParam = () => {
+  try {
+    const questions = route.query.questions?.toString();
+    if (questions) {
+      return Number.parseInt(questions);
+    }
+  } catch (e) {
+    console.error("Error parsing questions from query param", e);
+  }
+};
+const questions = getQuestionsFromQueryParam();
+
 const {
   currentCountry,
   answer,
@@ -21,7 +33,7 @@ const {
   bestScoreText,
   currentQuestionIndex,
   maxPossibleScore,
-} = useTextCapitalsQuiz(continent);
+} = useTextCapitalsQuiz(continent, questions);
 
 function guessCapital() {
   giveAnswer(answerInput.value);
@@ -30,13 +42,20 @@ function guessCapital() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-12">
-    <div v-if="!isEndOfQuiz" class="text-xl">
-      Q{{ currentQuestionIndex + 1 }} / {{ quiz.length }}. What is the capital
-      of <span class="font-semibold"> {{ currentCountry }} </span> ?
+  <div
+    class="flex flex-col h-full w-full md:max-w-[400px] px-2 justify-start md:justify-center gap-12"
+  >
+    <div v-if="!isEndOfQuiz" class="text-xl flex flex-col gap-3">
+      <div class="text-4xl text-center font-extralight">
+        Q{{ currentQuestionIndex + 1 }} / {{ quiz.length }}.
+      </div>
+      <div>
+        What is the capital of
+        <span class="font-semibold"> {{ currentCountry }} </span> ?
+      </div>
     </div>
     <div
-      class="w-full flex flex-col gap-2 md:w-fit m-auto"
+      class="w-full flex flex-col gap-2 md:w-fit mx-auto"
       v-if="quiz && !isEndOfQuiz"
     >
       <div class="flex gap-1 relative items-center justify-center w-full">
@@ -45,20 +64,28 @@ function guessCapital() {
           class="outline outline-offset-1 rounded-sm w-full md:w-[380px]"
           v-model="answerInput"
           :class="{
-            'outline-slate-700': answerStatus === 'pending',
-            'outline-green-600 outline-2': answerStatus === 'exact',
-            'outline-orange-600 outline-2': answerStatus === 'close',
-            'outline-red-600 outline-2': answerStatus === 'error',
+            'outline-slate-700': answerStatus === 'Pending',
+            'outline-green-600 outline-2': answerStatus === 'Exact',
+            'outline-orange-600 outline-2': answerStatus === 'Close',
+            'outline-red-600 outline-2': answerStatus === 'Wrong',
           }"
           @keydown.enter="guessCapital"
         />
 
         <span
           v-if="showAnswer"
-          class="absolute w-40 top-[-40px] md:top-0 md:bottom-0 md:left-[400px] bg-green-300 p-1 rounded-md"
+          class="absolute w-full md:w-40 top-[-40px] md:top-0 md:bottom-0 md:left-[400px] bg-green-300 p-1 rounded-md"
+          :class="{
+            'bg-green-300 ': answerStatus === 'Exact',
+            'bg-orange-300 ': answerStatus === 'Close',
+            'bg-red-300 text-white': answerStatus === 'Wrong',
+          }"
         >
-          {{ answer }}</span
-        >
+          {{ answerStatus }}
+          <span v-if="answerStatus !== 'Exact'">
+            .&nbsp;Correct answer: {{ answer }}</span
+          >
+        </span>
       </div>
       <button @click="guessCapital" type="button">Answer</button>
       <button @click="guessCapital" type="button">Pass</button>
@@ -66,7 +93,7 @@ function guessCapital() {
 
     <div v-if="isEndOfQuiz">End</div>
 
-    <div class="text-5xl m-auto">{{ points }} / {{ maxPossibleScore }}</div>
+    <div class="text-5xl mx-auto">{{ points }} / {{ maxPossibleScore }}</div>
 
     <div v-if="isEndOfQuiz">
       {{ bestScoreText }}
