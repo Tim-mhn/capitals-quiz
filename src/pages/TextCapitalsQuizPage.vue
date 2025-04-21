@@ -66,7 +66,7 @@ function guessCapital() {
 
     <div v-if="isEndOfQuiz">End</div>
 
-    <div class="text-5xl">{{ points }} / {{ maxPossibleScore }}</div>
+    <div class="text-5xl m-auto">{{ points }} / {{ maxPossibleScore }}</div>
 
     <div v-if="isEndOfQuiz">
       {{ bestScoreText }}

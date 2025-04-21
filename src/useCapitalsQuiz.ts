@@ -77,7 +77,7 @@ export const CONTINENTS = [
 export type Continent = (typeof CONTINENTS)[number];
 
 export function useTextCapitalsQuiz(continent?: Continent, questions?: number) {
-  const MAX_QUESTIONS = 10; // questions;
+  const MAX_QUESTIONS = questions;
 
   const mode: QuizMode = continent
     ? {
